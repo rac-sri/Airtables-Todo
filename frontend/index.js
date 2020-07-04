@@ -6,6 +6,7 @@ import {
   TextButton,
   TablePickerSynced,
   useGlobalConfig,
+  FieldPickerSynced,
 } from "@airtable/blocks/ui";
 import React, { useState } from "react";
 
@@ -20,9 +21,27 @@ function TodoBlock() {
   const records = useRecords(table);
   //  const [tableId, setTableId] = useState(null)
 
-  const tasks = records
-    ? records.map((record) => <Task key={record.id} record={record} />)
+  const completedFieldId = globalConfig.get("completedFieldId");
+  const completedField = table
+    ? table.getFieldByIdIfExists(completedFieldId)
     : null;
+
+  const toggle = (record) => {
+    table.updateRecordAsync(record, {
+      [completedFieldId]: !record.getCellValue(completedFieldId),
+    });
+  };
+  const tasks =
+    records && completedFieldId
+      ? records.map((record) => (
+          <Task
+            key={record.id}
+            record={record}
+            onToggle={toggle}
+            completedFieldId={completedFieldId}
+          />
+        ))
+      : null;
 
   return (
     <div>
@@ -34,12 +53,14 @@ function TodoBlock() {
         }}
       /> */}
       <TablePickerSynced globalConfigKey="selectedTableId" />
+      <FieldPickerSynced table={table} globalConfigKey="completedFieldId" />
       {tasks}
     </div>
   );
 }
 
-function Task({ record }) {
+function Task({ record, completedFieldId, onToggle }) {
+  const label = record.name || "Unnamed record";
   return (
     <div
       style={{
@@ -51,7 +72,15 @@ function Task({ record }) {
         borderBottom: "1px solid #ddd",
       }}
     >
-      {record.name || "Unnamed record"}{" "}
+      <TextButton
+        variant="dark"
+        size="xlarge"
+        onClick={() => {
+          onToggle(record);
+        }}
+      >
+        {record.getCellValue(completedFieldId) ? <s>{label}</s> : label}{" "}
+      </TextButton>
       <TextButton
         icon="expand"
         aria-label="Expand record"
